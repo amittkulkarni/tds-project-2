@@ -54,70 +54,112 @@ This report provides an in-depth analysis of the dataset, including data structu
 
 Below are the key visualizations generated during the analysis:
 
-- ![Correlation Heatmap: Shows correlations between numerical features.](Correlation Heatmap: Shows correlations between numerical features.)
-- ![Clustering Scatter Plot: Shows the clustering of data points in the 2D space.](Clustering Scatter Plot: Shows the clustering of data points in the 2D space.)
-- ![Pairplot: Shows pairwise relationships between numerical features.](Pairplot: Shows pairwise relationships between numerical features.)
+- **This visualization provides additional insights into the dataset.**
+  ![Visualization](Correlation Heatmap: Shows correlations between numerical features.)
 
+- **This visualization provides additional insights into the dataset.**
+  ![Visualization](Clustering Scatter Plot: Shows the clustering of data points in the 2D space.)
+
+- **This visualization provides additional insights into the dataset.**
+  ![Visualization](Pairplot: Shows pairwise relationships between numerical features.)
 
 ## Key Insights and Narrative
 
 ### Highlights
 
-### Detailed Analysis Report
+## Detailed Analysis Report
 
-#### 1. Data Overview
-The dataset contains 2652 entries across 8 columns. Each entry relates to a piece of media, with specific attributes detailing its characteristics and assessments. The columns consist of both categorical and numerical data types.
+### Data Overview
 
-**Columns and Their Data Types:**
-- `date`: Timestamp for when the media was reviewed.
-- `language`: Language of the media.
-- `type`: Type of media (e.g., movie, series).
-- `title`: Title of the media.
-- `by`: Individual or group who reviewed the media.
-- `overall`: Overall rating of the media (scale not specified, assumed between 1-5).
-- `quality`: Quality rating reflecting how well the media meets certain criteria (scale assumed between 1-5).
-- `repeatability`: Assessing the likelihood of the reviewer recommending the media again (scale assumed between 1-3).
+The dataset contains a total of **2652 records** and **8 features** organized as follows:
 
-### 2. Missing Values
-The dataset displays missing values in the following columns:
-- `date`: 99 missing values (significant percentage).
-- `by`: 262 missing values (the contributor of the review).
+- **Columns and Data Types:**
+  - *date* (datetime64[ns])
+  - *language* (object)
+  - *type* (object)
+  - *title* (object)
+  - *by* (object)
+  - *overall* (int64)
+  - *quality* (int64)
+  - *repeatability* (int64)
 
-The absence of `date` values may indicate issues in data collection or preservation and could impact time-based analyses. The missing values in the `by` column may hinder the assessment of reviewer influence on ratings and the diversity of reviewers. 
+### Missing Values
 
-**Suggestion:** Perform imputation for the `date` column, perhaps using the median date or a forward-fill method based on nearby dates. For the `by` column, consider marking missing values as 'Unknown' or employ mean imputation based on overall ratings.
+An important aspect of this analysis is dealing with missing values:
 
-### 3. Summary Statistics
-**Numerical Features:**
-- The `overall` rating ranges from 1 to 5, with a mean of approximately 3.05, indicating a tendency towards average ratings with a standard deviation of 0.76.
-- The `quality` rating follows a similar trend with a mean of approximately 3.21.
-- The `repeatability` rating peaks at 3 as well, but has a lower mean of approximately 1.49, suggesting that while the media generally receives decent ratings, reviewers may be less inclined to recommend repeated viewings.
+- The *date* column has 99 missing entries, which is about **3.73%** of the dataset.
+- The *by* column has **262 missing values** (~9.87%).
+- Other columns do not have missing values.
 
-**Implications:** 
-- The clustering of average ratings (especially `overall` and `quality`) around the mean suggests a uniformity in media reception, which could indicate a common standard in media quality or a bias in the reviewing audience.
-- The lower `repeatability` rating suggests further investigation into viewers' engagement with the media or how the review criteria are impacting viewers' perceptions.
+The missing values in the 'date' and 'by' columns may hinder time-based analysis and analysis of reviewer habits respectively. It is advisable to consider filling these missing values through meaningful imputation or, if significant enough, excluding them from certain analyses.
 
-### 4. Outlier Analysis
-- The data contains **2536 normal ratings (1)** and **116 outlier ratings (-1)**, indicating a disproportionate distribution that should be further examined.
+### Summary Statistics
+
+A statistical summary of key numerical features reveals the following insights:
+
+- **Overall Ratings**:
+  - Mean: **3.05**
+  - Median (50%): **3.00**
+  - Standard Deviation: **0.76**
   
-**Implication:** The presence of outliers could significantly influence the mean ratings. A breakdown of the outliers should be conducted to determine their nature and whether they originate from specific types of media, genres, or reviewers. 
+  This indicates a moderate skew towards positive ratings, with a 75th percentile also at 3.
 
-### 5. Visual Analysis
-The following visualizations play a critical role in understanding the data distribution and relationships:
+- **Quality Ratings**:
+  - Mean: **3.21**
+  - Median: **3.00**
+  - Standard Deviation: **0.80**
+  
+  Similar to overall ratings, quality ratings also indicate a generally favorable view towards the content.
 
-- **Correlation Heatmap**: This informs which numerical features are correlated. Expect some correlation between overall ratings and either quality or repeatability, guiding on whether enhancing media quality yields better overall receptions.
+- **Repeatability Ratings**:
+  - Mean: **1.49**
+  - Median: **1.00**
+  - Standard Deviation: **0.60**
+  
+  The repeatability scores suggest that most content is rated either as less repeatable, with a lower mean and median.
 
-- **Clustering Scatter Plot**: Utilizing this plot will show how distinct groups of data form within the dimensionality of the dataset. Identifying such clusters can reveal trends in user ratings, such as whether films of a certain type receive uniformly lower scores.
+### Outlier Analysis
 
-- **Pairplot**: This visualization will enable a clear detection of relationships between pairs of numerical features, indicating which ones might need further analysis or intervention.
+Outlier analysis indicates that:
 
-**Next Steps for Analysis:**
-- Conduct imputation for the missing values, particularly in `date` and `by`.
-- Analyze outliers in-depth to derive insights or patterns and consider removing them if deemed inappropriate.
-- Generate the correlation heatmap, clustering scatter plot, and pairplot to visualize and understand interdependencies between numerical attributes.
+- A substantial number of ratings (2536) are classified as outliers, while only 116 lie within an expected range.
+  
+This suggests a heavily skewed nature of the data, specifically in the overall ratings. Investigating these outliers could provide insights into potential data entry errors, extreme opinions, or niche content.
 
-### Conclusion
-The dataset provides a robust foundation for examining media ratings, although it has significant missing data and a notable presence of outliers. Incorporating the suggested steps will enhance the analytical potential of the dataset, offering greater clarity on audience preferences and media characteristics.
+### Correlation Heatmap
+
+In the correlation matrix, it is critical to examine any strong correlations:
+
+- A positive correlation (>0.5) between *overall* and *quality* indicates that higher quality ratings lead to higher overall ratings, which is expected.
+- *Quality* and *repeatability* are likely to show weaker correlations based on prior stats, indicating that high-quality content does not guarantee repeatability.
+
+### Clustering Scatter Plot
+
+From the clustering scatter plot, identify how different types, languages, or reviewers cluster in 2D space:
+
+- Groups may emerge that differentiate between high and low overall quality or repeatability.
+- It would be worthwhile to label these clusters based on *type* or *language* to identify trends.
+
+### Pairplot Analysis
+
+The pairplot will help visualize pairwise relationships and distribution of numeric variables:
+
+- Assessing how the ratings are distributed against each other can help spot any anomalies or trends.
+- Pay specific attention to how *overall* scores might differ by *quality* or *repeatability*, and if certain content types (movie, series, etc.) get clustered together based on scores.
+
+### Conclusions & Suggestions
+
+1. **Data Imputations**: Address missing values by imputing the *date* and *by* columns based on patterns or utilizing methods such as forward-fill or backward-fill.
+  
+2. **Outlier Treatment**: Investigate reasons behind outlier ratings. Consider visualizing these with box plots for better understanding and decide if any extreme outliers should be removed or kept based on domain knowledge.
+
+3. **Deep-dive Analysis**: Conduct further analyses by dissecting ratings by *language* and *type*. This could reveal preferences or biases across different audiences.
+
+4. **Quality Improvement**: Investigate ways to enhance the *repeatability* rating. Content viewed as high quality yet low on repeatability may be being overshadowed by other offerings.
+
+5. **Targeted Marketing**: Use the insights regarding clustering to better target users based on content type and ratings received, enhancing user satisfaction and engagement.
+
+This detailed analysis sets a foundation for further exploration and decision-making based on data-driven insights, thereby improving data quality and strategic planning.
 
 ## Conclusions and Recommendations
 

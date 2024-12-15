@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from scipy.stats import ttest_ind, f_oneway
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
@@ -27,6 +28,7 @@ from dateutil import parser
 import chardet
 import json
 import re
+import hashlib
 
 # Environment variable for AI Proxy token
 AIPROXY_TOKEN = os.environ.get("AIPROXY_TOKEN")
@@ -106,6 +108,28 @@ def read_csv(file_path):
         print(f"Error reading the file: {e}")
         sys.exit(1)
 
+
+def statistical_tests(df):
+    """
+    Performs t-tests and ANOVA on numerical columns to find statistically significant differences.
+    """
+    numeric_data = df.select_dtypes(include=[np.number])
+    results = {}
+
+    # Pairwise t-tests
+    for col1 in numeric_data.columns:
+        for col2 in numeric_data.columns:
+            if col1 != col2:
+                stat, p_value = ttest_ind(numeric_data[col1].dropna(), numeric_data[col2].dropna())
+                results[f"T-test: {col1} vs {col2}"] = {"Statistic": stat, "P-value": p_value}
+    
+    # ANOVA
+    if numeric_data.shape[1] > 2:
+        anova_stat, anova_p_value = f_oneway(*[numeric_data[col].dropna() for col in numeric_data.columns])
+        results["ANOVA"] = {"Statistic": anova_stat, "P-value": anova_p_value}
+
+    return results
+
 def perform_advanced_analysis(df):
     """
     Performs a comprehensive analysis of the dataframe, including summary statistics and outlier detection.
@@ -148,10 +172,11 @@ def regression_analysis(df):
     model = LinearRegression()
     model.fit(x, y)
     predictions = model.predict(x)
+    feature_importance = dict(zip(x.columns, np.abs(model.coef_)))
     return {
         "MSE": mean_squared_error(y, predictions),
         "R2": r2_score(y, predictions),
-        "Coefficients": dict(zip(x.columns, model.coef_)),
+        "Feature Importance": feature_importance,
     }
 
 def clustering_analysis(df):
@@ -173,15 +198,17 @@ def visualize_advanced(df, output_folder):
 
     numeric_data = df.select_dtypes(include=[np.number]).dropna()
     
+    sns.set_palette("colorblind")
+    
     if not numeric_data.empty:
         # Correlation Heatmap
         plt.figure(figsize=(10, 8))
         correlation_matrix = numeric_data.corr()
-        sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f", annot_kws={'size': 10},
-                    linewidths=0.5, cbar_kws={"shrink": 0.8})
-        plt.title("Correlation Heatmap", fontsize=16)
-        plt.xticks(rotation=45, ha='right')
-        plt.yticks(rotation=0)
+        sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f", annot_kws={'size': 12},
+                    linewidths=1, cbar_kws={"shrink": 0.8})
+        plt.title("Correlation Heatmap", fontsize=18, pad=20)
+        plt.xticks(rotation=45, fontsize=12, ha='right')
+        plt.yticks(fontsize=12)
         file_path = os.path.join(output_folder, "correlation_heatmap.png")
         plt.savefig(file_path, bbox_inches='tight')
         visualizations.append("Correlation Heatmap: Shows correlations between numerical features.")
@@ -197,12 +224,13 @@ def visualize_advanced(df, output_folder):
         palette = sns.color_palette("Set1", n_colors=len(np.unique(clusters)))
         for cluster in np.unique(clusters):
             subset = df_with_clusters[df_with_clusters["Cluster"] == cluster]
-            plt.scatter(subset.iloc[:, 0].astype(float), subset.iloc[:, 1].astype(float), 
-                        label=f"Cluster {cluster}", s=100, alpha=0.7, c=[palette[cluster]])
+            plt.scatter(subset.iloc[:, 0], subset.iloc[:, 1], 
+                        label=f"Cluster {cluster}", s=150, alpha=0.8, c=[palette[cluster]], edgecolor="k")
         plt.title("Clustering Scatter Plot", fontsize=16)
         plt.xlabel(df_with_clusters.columns[0], fontsize=12)
         plt.ylabel(df_with_clusters.columns[1], fontsize=12)
-        plt.legend(title="Clusters", fontsize=12)
+        plt.legend(title="Clusters", fontsize=12, loc="best")
+        plt.grid(True, linestyle="--", alpha=0.7)
         file_path = os.path.join(output_folder, "clustering_scatter.png")
         plt.savefig(file_path, bbox_inches='tight')
         visualizations.append("Clustering Scatter Plot: Shows the clustering of data points in the 2D space.")
@@ -274,6 +302,30 @@ def query_llm(function_call):
     except Exception as e:
         print(f"Error querying AI Proxy: {e}")
         return "Error: Unable to generate narrative."
+
+def cache_llm_query(function_call, cache_dir="llm_cache"):
+    """
+    Caches LLM query results to avoid redundant calls.
+    """
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+
+    # Hash the function_call to create a unique key
+    query_hash = hashlib.md5(function_call.encode()).hexdigest()
+    cache_file = os.path.join(cache_dir, f"{query_hash}.json")
+
+    # Check if cache exists
+    if os.path.exists(cache_file):
+        with open(cache_file, "r") as f:
+            return json.load(f)
+
+    # If not cached, query the LLM
+    response = query_llm(function_call)
+    with open(cache_file, "w") as f:
+        json.dump(response, f)
+
+    return response
+        
         
 def create_readme(analysis, visualizations, story, output_folder):
     """
@@ -306,8 +358,17 @@ def create_readme(analysis, visualizations, story, output_folder):
         f.write("Below are the key visualizations generated during the analysis:\n\n")
         for vis in visualizations:
             vis_filename = os.path.basename(vis)
-            f.write(f"- ![{vis_filename}]({vis_filename})\n")
-        f.write("\n\n")
+            if "correlation_heatmap" in vis_filename:
+                explanation = "The heatmap highlights the correlations between numerical features. Strong correlations may indicate predictive relationships."
+            elif "clustering_scatter" in vis_filename:
+                explanation = "The scatter plot shows clustering patterns, which can help identify natural groupings in the data."
+            elif "pairplot" in vis_filename:
+                explanation = "The pairplot provides pairwise visualizations of feature relationships, which are useful for identifying trends and dependencies."
+            else:
+                explanation = "This visualization provides additional insights into the dataset."
+    
+            f.write(f"- **{explanation}**\n  ![Visualization]({vis_filename})\n\n")
+
 
         # Narrative Section
         f.write("## Key Insights and Narrative\n\n")
@@ -340,6 +401,7 @@ def main(file_path):
     # Perform analysis
     analysis_results = perform_advanced_analysis(df)
     clusters, cluster_indices = clustering_analysis(df)
+    analysis_results["statistical_tests"] = statistical_tests(df)
 
     # Generate visualizations
     visualizations = visualize_advanced(df, output_folder)
@@ -348,7 +410,7 @@ def main(file_path):
     summary = generate_summary(clusters, visualizations, analysis_results)
     
     # Generate Story
-    story = query_llm(summary)
+    story = cache_llm_query(summary)
     
     # Create the README.md
     create_readme(analysis_results, visualizations, story, output_folder)
